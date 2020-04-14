@@ -2,6 +2,7 @@ package chain
 
 import (
 	"bytes"
+	"fmt"
 	"testing"
 )
 
@@ -22,15 +23,20 @@ func TestNewMerkleTree_DifferentTreesProduceDifferentHashes(t *testing.T) {
 		results[n] = mt.MainHash.Hash
 	}
 
-	first := results[0]
-	for i, res := range results {
-		if i == 0 {
-			continue
-		}
+	for j := range results {
+		j := j
+		t.Run(fmt.Sprintf("first word with an index %d - %q", j, string(tests[j][0])), func(t *testing.T) {
+			first := results[j]
+			for i, res := range results {
+				if i == j {
+					continue
+				}
 
-		if bytes.Equal(first, res) {
-			t.Errorf("results for\n\n%v\n\tand\n%v\n\nare equal: %v", asStrings(tests[0]), asStrings(tests[i]), res)
-		}
+				if bytes.Equal(first, res) {
+					t.Errorf("results for\n\n%v\n\tand\n%v\n\nare equal: %v", asStrings(tests[j]), asStrings(tests[i]), res)
+				}
+			}
+		})
 	}
 }
 
