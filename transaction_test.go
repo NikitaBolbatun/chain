@@ -1,1 +1,1 @@
-package bulba_chain
+package chain

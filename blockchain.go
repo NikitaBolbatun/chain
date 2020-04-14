@@ -1,9 +1,10 @@
-package bulba_chain
+package chain
 
 import (
 	"context"
 	"crypto"
 	"fmt"
+
 	"golang.org/x/crypto/ed25519"
 )
 
