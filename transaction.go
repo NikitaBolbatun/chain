@@ -1,4 +1,4 @@
-package bulba_chain
+package chain
 
 import (
 	"bytes"

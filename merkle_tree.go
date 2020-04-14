@@ -1,4 +1,4 @@
-package bulba_chain
+package chain
 
 import "crypto/sha256"
 
@@ -6,8 +6,10 @@ type MerkleSheet struct {
 	Parent *MerkleSheet
 	First  *MerkleSheet
 	Two    *MerkleSheet
+	Data   []byte
 	Hash   []byte
 }
+
 type MerkleTree struct {
 	MainHash *MerkleSheet
 }
@@ -18,6 +20,7 @@ func NewMerkleTree(data ...[]byte) *MerkleTree {
 	for _, datum := range data{
 		sheets = append(sheets, NewMerkleSheets(datum))
 	}
+
 	for len(sheets) > 1 {
 		var parents []*MerkleSheet
 		var hash [32]byte
@@ -40,13 +43,14 @@ func NewMerkleTree(data ...[]byte) *MerkleTree {
 	}
 
 	if len(sheets) == 1 {
-
 		return &MerkleTree{sheets[0]}
 	}
 	return nil
 }
+
 func NewMerkleSheets(data []byte) *MerkleSheet {
 	hash := sha256.Sum256(data)
-	sheet := MerkleSheet{ Hash: hash[:]}
+	d := append([]byte(nil), data...)
+	sheet := MerkleSheet{ Hash: hash[:], Data: d}
 	return &sheet
 }

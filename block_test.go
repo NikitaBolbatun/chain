@@ -1,4 +1,4 @@
-package bulba_chain
+package chain
 
 import (
 	"golang.org/x/crypto/ed25519"
