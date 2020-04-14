@@ -14,24 +14,24 @@ type MerkleTree struct {
 
 func NewMerkleTree(data ...[]byte) *MerkleTree {
 	var sheets []*MerkleSheet
-	var hash [32]byte
-	for datum := range data {
-		hash = append(sheets, sha256.Sum256(datum))
+
+	for _, datum := range data{
+		sheets = append(sheets, NewMerkleSheets(datum))
 	}
 	for len(sheets) > 1 {
 		var parents []*MerkleSheet
-
+		var hash [32]byte
 		for i := 0; i+1 < len(sheets); i += 2 {
 			hash = sha256.Sum256(append(sheets[i].Hash, sheets[i+1].Hash...))
-			sheets := MerkleSheet{First: sheets[i], Two: sheets[i+1], Hash: hash[:]}
-			if sheets.First != nil {
-				sheets.Parent = &sheets
+			sheet := MerkleSheet{First: sheets[i], Two: sheets[i+1], Hash: hash[:]}
+			if sheet.First != nil {
+				sheet.Parent = &sheet
 			}
-			if sheets.Two != nil {
-				sheets.Parent = &sheets
+			if sheet.Two != nil {
+				sheet.Parent = &sheet
 			}
 
-			parents = append(parents, sheets.First)
+			parents = append(parents, sheet.First)
 		}
 		if len(sheets)%2 != 0 {
 			parents = append(parents, sheets[len(sheets)-1])
@@ -44,4 +44,9 @@ func NewMerkleTree(data ...[]byte) *MerkleTree {
 		return &MerkleTree{sheets[0]}
 	}
 	return nil
+}
+func NewMerkleSheets(data []byte) *MerkleSheet {
+	hash := sha256.Sum256(data)
+	sheet := MerkleSheet{ Hash: hash[:]}
+	return &sheet
 }
