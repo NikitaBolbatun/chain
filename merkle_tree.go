@@ -1,56 +1,61 @@
-package chain
+package bulba_chain
 
 import "crypto/sha256"
 
-type MerkleSheet struct {
-	Parent *MerkleSheet
-	First  *MerkleSheet
-	Two    *MerkleSheet
-	Data   []byte
+type MerkleNode struct {
+	Parent *MerkleNode
+	Left   *MerkleNode
+	Right  *MerkleNode
 	Hash   []byte
 }
 
 type MerkleTree struct {
-	MainHash *MerkleSheet
+	Root *MerkleNode
 }
 
 func NewMerkleTree(data ...[]byte) *MerkleTree {
-	var sheets []*MerkleSheet
+	var nodes []*MerkleNode
 
-	for _, datum := range data{
-		sheets = append(sheets, NewMerkleSheets(datum))
+	for _, datum := range data {
+		nodes = append(nodes, newMerkleNode(nil, nil, datum))
 	}
 
-	for len(sheets) > 1 {
-		var parents []*MerkleSheet
-		var hash [32]byte
-		for i := 0; i+1 < len(sheets); i += 2 {
-			hash = sha256.Sum256(append(sheets[i].Hash, sheets[i+1].Hash...))
-			sheet := MerkleSheet{First: sheets[i], Two: sheets[i+1], Hash: hash[:]}
-			if sheet.First != nil {
-				sheet.Parent = &sheet
-			}
-			if sheet.Two != nil {
-				sheet.Parent = &sheet
-			}
+	for len(nodes) > 1 {
+		var parents []*MerkleNode
 
-			parents = append(parents, sheet.First)
+		for i := 0; i+1 < len(nodes); i += 2 {
+			node := newMerkleNode(nodes[i], nodes[i+1], append(nodes[i].Hash, nodes[i+1].Hash...))
+			parents = append(parents, node)
 		}
-		if len(sheets)%2 != 0 {
-			parents = append(parents, sheets[len(sheets)-1])
+
+		if len(nodes)%2 != 0 {
+			parents = append(parents, nodes[len(nodes)-1])
 		}
-		sheets = parents
+
+		nodes = parents
 	}
 
-	if len(sheets) == 1 {
-		return &MerkleTree{sheets[0]}
+	if len(nodes) == 1 {
+		return &MerkleTree{Root: nodes[0]}
 	}
 	return nil
 }
+func newMerkleNode(left *MerkleNode, right *MerkleNode, data []byte) *MerkleNode {
+	var hash [32]byte
 
-func NewMerkleSheets(data []byte) *MerkleSheet {
-	hash := sha256.Sum256(data)
-	d := append([]byte(nil), data...)
-	sheet := MerkleSheet{ Hash: hash[:], Data: d}
-	return &sheet
+	if left == nil && right == nil {
+		hash = sha256.Sum256(data)
+	} else {
+		hash = sha256.Sum256(append(left.Hash, right.Hash...))
+	}
+
+	node := MerkleNode{Left: left, Right: right, Hash: hash[:]}
+	if left != nil {
+		left.Parent = &node
+	}
+	if right != nil {
+		right.Parent = &node
+	}
+
+	return &node
 }

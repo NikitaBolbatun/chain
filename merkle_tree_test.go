@@ -1,4 +1,4 @@
-package chain
+package bulba_chain
 
 import (
 	"bytes"
@@ -20,7 +20,7 @@ func TestNewMerkleTree_DifferentTreesProduceDifferentHashes(t *testing.T) {
 		tests[n] = tc
 
 		mt := NewMerkleTree(tests[n]...)
-		results[n] = mt.MainHash.Hash
+		results[n] = mt.Root.Hash
 	}
 
 	for j := range results {

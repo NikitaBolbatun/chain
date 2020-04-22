@@ -1,8 +1,7 @@
-package chain
+package bulba_chain
 
 import (
 	"context"
-	"crypto"
 	"errors"
 )
 
@@ -17,26 +16,16 @@ func (bl *Block) Hash() (string, error) {
 	return Hash(b)
 }
 
-// first block with blockchain settings
-type Genesis struct {
-	//Account -> funds
-	Alloc map[string]uint64
-	//list of validators public keys
-	Validators []crypto.PublicKey
-}
-
-func (g Genesis) ToBlock() Block {
-	//todo impliment me
-	// алфавитный порядок порядок genesis.Alloc
-	return Block{}
-}
-
 type Message struct {
 	From string
 	Data interface{}
 }
 
 type NodeInfoResp struct {
+	NodeName string
+	BlockNum uint64
+}
+type BlockInfoResp struct {
 	NodeName string
 	BlockNum uint64
 }

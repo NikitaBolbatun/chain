@@ -1,10 +1,9 @@
-package chain
+package bulba_chain
 
 import (
 	"context"
 	"crypto"
 	"fmt"
-
 	"golang.org/x/crypto/ed25519"
 )
 
@@ -83,17 +82,4 @@ func (c *Node) NodeInfo() NodeInfoResp {
 
 func (c *Node) NodeAddress() string {
 	return c.address
-}
-func (c *Node) AddTransaction(transaction Transaction) error {
-	panic("implement me")
-}
-
-func (c *Node) SignTransaction(transaction Transaction) (Transaction, error) {
-	b, err := transaction.Bytes()
-	if err != nil {
-		return Transaction{}, err
-	}
-
-	transaction.Signature = ed25519.Sign(c.key, b)
-	return transaction, nil
 }

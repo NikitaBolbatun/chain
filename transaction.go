@@ -1,4 +1,4 @@
-package chain
+package bulba_chain
 
 import (
 	"bytes"
@@ -34,8 +34,8 @@ func (t Transaction) Bytes() ([]byte, error) {
 	return b.Bytes(), nil
 }
 
-func NewTransaction(from, to string, amount, fee uint64, key ed25519.PublicKey, signature []byte) *Transaction {
-	return &Transaction{
+func NewTransaction(from, to string, amount, fee uint64, key ed25519.PublicKey, signature []byte) Transaction {
+	return Transaction{
 		From:      from,
 		To:        to,
 		Amount:    amount,
@@ -45,8 +45,21 @@ func NewTransaction(from, to string, amount, fee uint64, key ed25519.PublicKey, 
 	}
 }
 
-func (t Transaction) AddTransaction(from, to string, amount, fee uint64, key ed25519.PublicKey, signature []byte) error {
-	//Проверки
-	NewTransaction(from, to, amount, fee, key, signature)
+func (c *Node) AddTransaction(transaction Transaction) error {
+	hash, err := transaction.Hash()
+	if err != nil {
+		return err
+	}
+	c.transactionPool[hash] = transaction
 	return nil
+}
+
+func (c *Node) SignTransaction(transaction Transaction) (Transaction, error) {
+	b, err := transaction.Bytes()
+	if err != nil {
+		return Transaction{}, err
+	}
+
+	transaction.Signature = ed25519.Sign(c.key, b)
+	return transaction, nil
 }

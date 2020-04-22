@@ -1,4 +1,4 @@
-package chain
+package bulba_chain
 
 import (
 	"time"
@@ -24,20 +24,25 @@ func NewBlock(num uint64, transaction []Transaction, prevBlockHash string) *Bloc
 }
 
 func (c *Node) GetBlockByNumber(ID uint64) Block {
-	panic("implement me")
+	return c.blocks[ID]
 }
 
 func (c *Node) AddBlock(b Block) error {
 	for _, v := range b.Transactions {
 		c.state[v.From] = c.state[v.From] - v.Amount - v.Fee
 		c.state[v.To] = c.state[v.To] + v.Amount
-		validatorKey := c.validators[int(b.BlockNum%uint64(len(c.validators)))]
-		validatorAddr, err := PubKeyToAddress(validatorKey)
+		validatorAddr, err := c.GetValidator(b.BlockNum)
 		if err != nil {
 			return err
 		}
 		c.state[validatorAddr] += v.Fee
 	}
 	c.blocks = append(c.blocks, b)
+	c.lastBlockNum++
 	return nil
+}
+
+func (c *Node) GetValidator(n uint64) (string, error) {
+	validatorKey := c.validators[int(n%uint64(len(c.validators)))]
+	return PubKeyToAddress(validatorKey)
 }

@@ -1,4 +1,4 @@
-package chain
+package bulba_chain
 
 import (
 	"golang.org/x/crypto/ed25519"
@@ -36,7 +36,6 @@ func TestBlockProcessing(t *testing.T) {
 			},
 		},
 	})
-	t.Log(nd.blocks)
 	if err != nil {
 		t.Fatal(err)
 	}

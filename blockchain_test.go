@@ -1,4 +1,4 @@
-package chain
+package bulba_chain
 
 import (
 	"crypto"
