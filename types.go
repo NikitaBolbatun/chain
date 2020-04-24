@@ -37,6 +37,12 @@ type connectedPeer struct {
 	cancel  context.CancelFunc
 }
 
+type BlockByNumResp struct {
+	NodeName     string
+	BlockNum     uint64
+	LastBlockNum uint64
+	Block        Block
+}
 func (cp connectedPeer) Send(ctx context.Context, m Message) {
 	//todo timeout using context + done check
 	cp.Out <- m

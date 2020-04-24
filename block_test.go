@@ -49,3 +49,27 @@ func TestBlockProcessing(t *testing.T) {
 		t.Error()
 	}
 }
+func TestNode_GetValidator(t *testing.T) {
+	pubkey, _, err := ed25519.GenerateKey(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	validatorAddr, err := PubKeyToAddress(pubkey)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	nd := &Node{
+		validators: []ed25519.PublicKey{pubkey},
+	}
+	nd.state = map[string]uint64{
+		"one":         200,
+		"two":         50,
+		validatorAddr: 50,
+	}
+	_, err = nd.GetValidator(1)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
