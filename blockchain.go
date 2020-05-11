@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"golang.org/x/crypto/ed25519"
 	"log"
-	"reflect"
+	"sync"
 )
 
 const MSGBusLen = 100
@@ -22,9 +22,11 @@ func NewNode(key ed25519.PrivateKey, genesis Genesis) (*Node, error) {
 		genesis:         genesis,
 		blocks:          make([]Block, 0),
 		lastBlockNum:    0,
+		handshake:       false,
 		peers:           make(map[string]connectedPeer, 0),
 		state:           make(map[string]uint64),
 		transactionPool: make(map[string]Transaction),
+
 	}, err
 }
 
@@ -33,7 +35,7 @@ type Node struct {
 	address      string
 	genesis      Genesis
 	lastBlockNum uint64
-
+	handshake  bool
 	//state
 	blocks []Block
 	//peer address - > peer info
@@ -45,14 +47,19 @@ type Node struct {
 
 	//transaction hash - > transaction
 	transactionPool map[string]Transaction
+
+
+	blockMutex sync.RWMutex
 }
 
 func (c *Node) NodeKey() crypto.PublicKey {
 	return c.key.Public()
 }
 
-func (c *Node) Connection(address string, in chan Message) chan Message {
-	out := make(chan Message, MSGBusLen)
+func (c *Node) Connection(address string, in chan Message,out chan Message) chan Message {
+	if out == nil {
+		out = make(chan Message, MSGBusLen)
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	c.peers[address] = connectedPeer{
 		Address: address,
@@ -93,46 +100,45 @@ func (c *Node) peerLoop(ctx context.Context, peer connectedPeer) {
 func (c *Node) processMessage(address string, msg Message,ctx context.Context) error {
 	switch m := msg.Data.(type) {
 	case NodeInfoResp:
-		fmt.Println(c.address, "connected to ", address, "need sync", c.lastBlockNum < m.BlockNum)
-		if c.lastBlockNum < m.BlockNum{
-			c.peers[address].Send(ctx, Message{
-				From: c.address,
-				Data: BlockInfoResp{
-					NodeName: c.address,
-					BlockNum: c.lastBlockNum + 1,
-				},
-			})
-		}
-
-	case BlockByNumResp:
-		if !reflect.DeepEqual(m.Block, Block{}) {
-			err := c.AddBlock(m.Block)
-			if err != nil {
-				return err
-			}
-			if c.lastBlockNum < m.LastBlockNum {
-				c.peers[address].Send(ctx, Message{
-					From: c.address,
-					Data: BlockByNumResp{
-						NodeName: c.address,
-						BlockNum: c.lastBlockNum + 1,
-					},
-				})
-			}
-		} else {
-			c.peers[address].Send(ctx, Message{
-				From: c.address,
-				Data: BlockByNumResp{
-					NodeName:     c.address,
-					BlockNum:     m.BlockNum,
-					LastBlockNum: c.lastBlockNum,
-					Block:        c.GetBlockByNumber(m.BlockNum),
-				},
-			})
-		}
+		return c.NodeInfoResp(address,m,ctx)
+	case BlockHandshake:
+		return c.BlocksHandshake(address,m,ctx)
 	}
 	return nil
 }
+
+
+func (c *Node) NodeInfoResp(address string, message NodeInfoResp, ctx context.Context) error {
+	if c.lastBlockNum < message.BlockNum {
+		blockHandshake := Message{
+			From: c.NodeAddress(),
+			Data: BlockHandshake{
+				NodeName: address,
+				BlockNum: c.lastBlockNum+1,
+			},
+		}
+		c.handshake = true
+		c.peers[address].Send(ctx, blockHandshake)
+	}
+	return nil
+}
+
+func (c *Node) BlocksHandshake(address string, message BlockHandshake, ctx context.Context) error {
+	fmt.Println(c.address, "connected to ", address, "need sync", c.lastBlockNum < message.BlockNum, c.lastBlockNum,message.BlockNum)
+	c.blockMutex.Lock()
+	defer c.blockMutex.Unlock()
+
+	for i := message.BlockNum + 1; i <= c.lastBlockNum; i++ {
+		blockMessage := Message{
+			From: c.NodeAddress(),
+			Data: c.blocks[i],
+		}
+		c.peers[address].Send(ctx, blockMessage)
+	}
+
+	return nil
+}
+
 
 
 func (c *Node) NodeInfo() NodeInfoResp {
