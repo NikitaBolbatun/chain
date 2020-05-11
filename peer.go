@@ -20,7 +20,7 @@ func (c *Node) AddPeer(peer Blockchain) error {
 
 	out := make(chan Message, MSGBusLen)
 	in := peer.Connection(c.address, out)
-	c.Connection(remoteAddress, in)
+	c.Connection(remoteAddress, in, out)
 	return nil
 }
 

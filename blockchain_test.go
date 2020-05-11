@@ -3,12 +3,10 @@ package bulba_chain
 import (
 	"golang.org/x/crypto/ed25519"
 	"testing"
+	"time"
 )
 
-
-
-
-func TestNode_Sync(t *testing.T) {
+func Test_Handshake(t *testing.T) {
 	numOfPeers := 5
 	initialBalance := uint64(100000)
 	peers := make([]*Node, numOfPeers)
@@ -41,9 +39,29 @@ func TestNode_Sync(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	err = peers[0].AddBlock(*NewBlock(1, nil, peers[2].GetBlockByNumber(0).BlockHash))
 
 	if err != nil {
 		t.Error(err)
 	}
+	for i := 0; i < len(peers); i++ {
+		for j := i + 1; j < len(peers); j++ {
+			err := peers[i].AddPeer(peers[j])
+			if err != nil {
+				t.Error(err)
+			}
+		}
+	}
 
+	time.Sleep(time.Second)
+
+	for i := 0; i < len(peers); i++ {
+		for j := i + 1; j < len(peers); j++ {
+			a := peers[i].lastBlockNum
+			b := peers[j].lastBlockNum
+			if a != b {
+				t.Fatal()
+			}
+		}
+	}
 }
