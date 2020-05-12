@@ -2,7 +2,10 @@ package bulba_chain
 
 import (
 	"bytes"
+	"context"
 	"encoding/gob"
+	"errors"
+	"fmt"
 	"golang.org/x/crypto/ed25519"
 )
 
@@ -44,22 +47,55 @@ func NewTransaction(from, to string, amount, fee uint64, key ed25519.PublicKey, 
 		Signature: signature,
 	}
 }
-
+//Исправить костыль с 2 функцией addtransaction
 func (c *Node) AddTransaction(transaction Transaction) error {
+	c.transMutex.Lock()
+	defer c.transMutex.Unlock()
+
 	hash, err := transaction.Hash()
 	if err != nil {
 		return err
 	}
+
+	err = c.CheckTransaction(transaction)
+	if err != nil {
+		return err
+	}
+
 	c.transactionPool[hash] = transaction
+
+	ctx := context.Background()
+
+	fmt.Println("Add transaction transaction pool")
+
+	c.Broadcast(ctx, Message{
+		From: c.address,
+		Data: TransactionSend{
+			NodeName:    c.address,
+			Transaction: transaction,
+		},
+	})
 	return nil
 }
 
-func (c *Node) SignTransaction(transaction Transaction) (Transaction, error) {
+func (c *Node) SignTransaction(transaction Transaction)  (Transaction,error) {
 	b, err := transaction.Bytes()
 	if err != nil {
-		return Transaction{}, err
+		return  transaction,err
 	}
 
 	transaction.Signature = ed25519.Sign(c.key, b)
-	return transaction, nil
+
+	return  transaction,nil
+}
+
+func (c *Node) CheckTransaction(transaction Transaction) error {
+	if transaction.To == "" || transaction.From == "" {
+		return errors.New("username not correct")
+	}
+	balance:= c.state[transaction.From]
+	if balance < transaction.Fee + transaction.Amount {
+		return  errors.New("balance not correct" )
+	}
+	return nil
 }

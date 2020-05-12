@@ -27,16 +27,17 @@ func NewBlock(num uint64, transaction []Transaction, prevBlockHash string) *Bloc
 func (c *Node) GetBlockByNumber(ID uint64) Block {
 	return c.blocks[ID]
 }
-
-func (c *Node) AddBlock(b Block) error {
+//Исправить баг, при хенд, валидаторы не заполняются из за разницы типов
+func (c *Node) Insertblock(b Block) error {
+	//validator := c.validators[int(c.lastBlockNum)%len(c.validators)]
+	//validatorAddr, err := PubKeyToAddress(validator)
+	//if err != nil {
+	//	return err
+	//}
 	for _, v := range b.Transactions {
 		c.state[v.From] = c.state[v.From] - v.Amount - v.Fee
 		c.state[v.To] = c.state[v.To] + v.Amount
-		//validatorAddr, err := c.GetValidator(b.BlockNum)
-		//if err != nil {
-		//	return err
-		//}
-		//c.state[validatorAddr] += v.Fee
+	//	c.state[validatorAddr] += v.Fee
 	}
 	c.blocks = append(c.blocks, b)
 	c.lastBlockNum++
@@ -48,11 +49,18 @@ func (c *Node) GetValidator(n uint64) (string, error) {
 	return PubKeyToAddress(validatorKey)
 }
 
-func (bl Block) SignBlock(key ed25519.PrivateKey) (Block, error) {
+func (bl Block) SignBlock(key ed25519.PrivateKey) error {
 	b, err := Bytes(bl.BlockHash)
 	if err != nil {
-		return Block{},err
+		return err
 	}
 	bl.Signature = ed25519.Sign(key, b)
-	return bl, nil
+	return  nil
+}
+func (bl *Block) VerifyBlockSign(key ed25519.PublicKey) (bool, error) {
+	b, err := Bytes(bl.BlockHash)
+	if err != nil {
+		return false, err
+	}
+	return ed25519.Verify(key, b, bl.Signature), nil
 }
