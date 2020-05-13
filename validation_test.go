@@ -37,6 +37,7 @@ func Test_validation(t *testing.T) {
 			t.Error(err)
 		}
 	}
+	//todo: тесты должны быть автоматизированные. желательно без sleep (как и код)
 	time.Sleep(time.Second*5)
 	t.Log(peers)
 }
