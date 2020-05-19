@@ -32,14 +32,14 @@ type connectedPeer struct {
 	cancel  context.CancelFunc
 }
 
-//type BlockHandshake struct {
-//	NodeName  string
-//	LastBlockName uint64
-//	BlockNum  uint64
-//	Block     Block
-//	NumberBlock uint64
-//
-//}
+type BlockHandshake struct {
+	NodeName  string
+	LastBlockName uint64
+	BlockNum  uint64
+	Block     Block
+	NumberBlock uint64
+
+}
 type BlockSend struct {
 	NodeName string
 	Block Block
@@ -49,7 +49,10 @@ type TransactionSend struct {
 	NodeName string
 	Transaction Transaction
 }
-
+type CommitSend struct {
+	NodeName string
+	commit uint64
+}
 func (cp connectedPeer) Send(ctx context.Context, m Message) {
 	//todo timeout using context + done check
 	cp.Out <- m

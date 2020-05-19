@@ -45,6 +45,8 @@ func TestGenesis_ToBlock(t *testing.T) {
 	genesis.Validators = []crypto.PublicKey{
 		validatorAddr,
 	}
-	genesis.ToBlock()
-	t.Log(genesis)
+	block := genesis.ToBlock()
+	if reflect.DeepEqual(block, Block{}){
+		t.Fatal()
+	}
 }

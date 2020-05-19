@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"golang.org/x/crypto/ed25519"
 	"log"
+	"reflect"
 	"sync"
 )
 
@@ -21,7 +22,7 @@ func NewNode(key ed25519.PrivateKey, genesis Genesis) (*Node, error) {
 		key:             key,
 		address:         address,
 		genesis:         genesis,
-		blocks:          make([]Block, 0),
+		chain:          *NewBlocks(),
 		lastBlockNum:    0,
 		peers:           make(map[string]connectedPeer, 0),
 		state:           make(map[string]uint64),
@@ -37,16 +38,17 @@ type Node struct {
 	//handshake state
 	handshake  bool
 	//state
-	blocks []Block
+	chain ChainBlocks
 	//peer address - > peer info
 	peers map[string]connectedPeer
+	validTurn int
 	//hash(state) - хеш от упорядоченного слайса ключ-значение
-	//todo hash()
 	state      map[string]uint64
 	validators []ed25519.PublicKey
-
+	commit CommitPool
 	//transaction hash - > transaction
 	transactionPool map[string]Transaction
+	random        string
 
 	blockMutex sync.RWMutex
 	transMutex sync.RWMutex
@@ -57,7 +59,13 @@ type Node struct {
 func (c *Node) NodeKey() crypto.PublicKey {
 	return c.key.Public()
 }
-
+func (c *Node) AddValidatorToNode() error {
+	c.Insertblock(c.genesis.ToBlock())
+	for _, validator := range c.genesis.Validators {
+		c.validators = append(c.validators, validator.(ed25519.PublicKey))
+	}
+	return nil
+}
 func (c *Node) Connection(address string, in chan Message, out chan Message) chan Message {
 	if out == nil {
 		out = make(chan Message, MSGBusLen)
@@ -75,7 +83,6 @@ func (c *Node) Connection(address string, in chan Message, out chan Message) cha
 }
 
 func (c *Node) peerLoop(ctx context.Context, peer connectedPeer) {
-	//todo handshake
 	peer.Send(ctx, Message{
 		From: c.address,
 		Data: NodeInfoResp{
@@ -93,104 +100,104 @@ func (c *Node) peerLoop(ctx context.Context, peer connectedPeer) {
 				log.Println("Process peer error", err)
 				continue
 			}
-			//broadcast to connected peers
 			//c.Broadcast(ctx, msg)
 		}
 	}
 }
 
 func (c *Node) processMessage(address string, message Message,ctx context.Context) error {
-	switch m := message.Data.(type) {
-	//case NodeInfoResp:
-	//	return c.NodeInfoResp(address,m,ctx)
-	//case BlockHandshake:
-	//	return c.BlocksHandshake(address, m, ctx)
+	var err error
+	switch message:= message.Data.(type) {
+	case NodeInfoResp:
+		err = c.NodeInfoResp(address,message,ctx)
+	case BlockHandshake:
+		err = c.BlocksHandshake(address, message,ctx)
 	case BlockSend:
-		return c.BlockMessage(m,ctx)
+		err = c.BlockMessage(message)
 	case TransactionSend:
-		return c.TransactionMessage(m)
+		err = c.TransactionMessage(message)
+	case CommitSend:
+		err = c.CommitMessage(message)
+	}
+	if err!=nil {
+		return err
 	}
 	return nil
 }
 
 
-//func (c *Node) NodeInfoResp(address string, message NodeInfoResp, ctx context.Context) error {
-//	c.blockMutex.Lock()
-//	defer c.blockMutex.Unlock()
-//
-//	if c.lastBlockNum < message.BlockNum && !c.handshake{
-//		c.handshake = true
-//		c.peers[address].Send(ctx, Message{
-//			From: c.address,
-//			Data: BlockHandshake{
-//				NodeName: c.address,
-//				BlockNum: c.lastBlockNum,
-//			},
-//		})
-//	}
-//	return nil
-//}
-//
-//
-//func (c *Node) BlocksHandshake(address string, message BlockHandshake, ctx context.Context) error {
-//	c.blockMutex.Lock()
-//	defer c.blockMutex.Unlock()
-//	fmt.Println(c.address, "connected to ", address, "need sync", c.lastBlockNum < message.BlockNum)
-//	if message.BlockNum<c.lastBlockNum {
-//		c.blocks = append(c.blocks, message.Block)
-//		c.lastBlockNum++
-//		if c.lastBlockNum < message.LastBlockName {
-//			c.peers[address].Send(ctx, Message{
-//				From: c.address,
-//				Data: BlockHandshake{
-//					NodeName: c.address,
-//					BlockNum: c.lastBlockNum,
-//				},
-//			})
-//		}
-//	} else {
-//		c.handshake = false
-//		c.peers[address].Send(ctx, Message{
-//			From: c.address,
-//			Data: BlockHandshake{
-//				NodeName:      c.address,
-//				BlockNum:      message.BlockNum,
-//				LastBlockName: c.lastBlockNum,
-//				Block:         c.blocks[message.BlockNum],
-//			},
-//		})
-//	}
-//	return nil
-//}
+func (c *Node) NodeInfoResp(address string, message NodeInfoResp, ctx context.Context) error {
+	c.blockMutex.Lock()
+	defer c.blockMutex.Unlock()
+	if c.lastBlockNum < message.BlockNum && !c.handshake{
+		c.handshake = true
+		c.peers[address].Send(ctx, Message{
+			From: c.address,
+			Data: BlockHandshake{
+				NodeName: c.address,
+				BlockNum: c.lastBlockNum,
+			},
+		})
+	}
+	return nil
+}
 
 
-func (c *Node) BlockMessage(message BlockSend, ctx context.Context) error {
-	c.blocks = append(c.blocks,message.Block)
-	c.lastBlockNum++
-	c.Broadcast(ctx, Message{
-		From: c.address,
-		//Data: ,
-	})
+func (c *Node) BlocksHandshake(address string, message BlockHandshake, ctx context.Context) error {
+	c.blockMutex.Lock()
+	defer c.blockMutex.Unlock()
+	fmt.Println(c.address, "connected to ", address, "need sync", c.lastBlockNum < message.BlockNum)
+	fmt.Println(message.NumberBlock, message.LastBlockName, c.lastBlockNum, message.BlockNum)
+	if !reflect.DeepEqual(message.Block, Block{}) {
+		c.chain.block = append(c.chain.block)
+		c.lastBlockNum++
+		if c.lastBlockNum < message.LastBlockName {
+			c.peers[address].Send(ctx, Message{
+				From: c.address,
+				Data: BlockHandshake{
+					NodeName: c.address,
+					BlockNum: c.lastBlockNum + 1,
+				},
+			})
+		} else {
+			c.handshake = false
+		}
+	} else {
+		c.peers[address].Send(ctx, Message{
+			From: c.address,
+			Data: BlockHandshake{
+				NodeName:      c.address,
+				BlockNum:      message.BlockNum,
+				LastBlockName: c.lastBlockNum,
+				Block:         c.GetBlockByNumber(message.BlockNum),
+			},
+		})
+	}
+	return nil
+}
+
+
+func (c *Node) BlockMessage(message BlockSend) error {
+	c.blockMutex.RLock()
+	defer c.blockMutex.RUnlock()
+	fmt.Println("Send block BlockMessage",message.Block.BlockNum)
+	err := c.Insertblock(message.Block)
+	if err!=nil {
+				return err
+			}
 
 	return nil
 }
 
 func (c *Node) TransactionMessage(message TransactionSend) error {
 	fmt.Println("Transaction Message ", message.NodeName)
-	err := c.addtransaction(message.Transaction)
+	err := c.AddTransaction(message.Transaction)
 	if err != nil {
 		return err
 	}
 	return nil
 }
-func (c *Node) addtransaction(transaction Transaction)  error {
-	hash, err := transaction.Hash()
-	if err != nil {
-		return err
-	}
-	c.transactionPool[hash] = transaction
-	return nil
-}
+
 func (c *Node) NodeInfo() NodeInfoResp {
 	return NodeInfoResp{
 		NodeName: c.address,
@@ -207,8 +214,17 @@ func (c *Node) Broadcast(ctx context.Context, msg Message) {
 	c.peersMutex.Lock()
 	defer c.peersMutex.Unlock()
 	for _, v := range c.peers {
-		if v.Address != c.address && v.Address != msg.From{
+		if v.Address != c.address{
 			v.Send(ctx, msg)
 		}
 	}
+}
+
+func (c *Node) CommitMessage(message CommitSend) error {
+	fmt.Println("Commit Message ", message.NodeName)
+	err := c.AddCommit(message.commit,message.NodeName)
+	if err != nil {
+		return err
+	}
+	return nil
 }

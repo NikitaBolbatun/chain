@@ -1,6 +1,9 @@
 package bulba_chain
 
-import "crypto/sha256"
+import (
+	"bytes"
+	"crypto/sha256"
+)
 
 type MerkleNode struct {
 	Parent *MerkleNode
@@ -13,18 +16,18 @@ type MerkleTree struct {
 	Root *MerkleNode
 }
 
-func NewMerkleTree(data ...[]byte) *MerkleTree {
+func (c *Node) NewMerkleTree(data ...[]byte) *MerkleTree {
 	var nodes []*MerkleNode
 
 	for _, datum := range data {
-		nodes = append(nodes, newMerkleNode(nil, nil, datum))
+		nodes = append(nodes,NewMerkleNode(nil, nil, datum))
 	}
 
 	for len(nodes) > 1 {
 		var parents []*MerkleNode
 
 		for i := 0; i+1 < len(nodes); i += 2 {
-			node := newMerkleNode(nodes[i], nodes[i+1], append(nodes[i].Hash, nodes[i+1].Hash...))
+			node := NewMerkleNode(nodes[i], nodes[i+1], append(nodes[i].Hash, nodes[i+1].Hash...))
 			parents = append(parents, node)
 		}
 
@@ -40,7 +43,7 @@ func NewMerkleTree(data ...[]byte) *MerkleTree {
 	}
 	return nil
 }
-func newMerkleNode(left *MerkleNode, right *MerkleNode, data []byte) *MerkleNode {
+func NewMerkleNode(left *MerkleNode, right *MerkleNode, data []byte) *MerkleNode {
 	var hash [32]byte
 
 	if left == nil && right == nil {
@@ -58,4 +61,20 @@ func newMerkleNode(left *MerkleNode, right *MerkleNode, data []byte) *MerkleNode
 	}
 
 	return &node
+}
+
+func (m *MerkleNode) FindNode(hash []byte) *MerkleNode {
+	if m == nil {
+		return nil
+	}
+
+	if m.Left == nil && m.Right == nil && bytes.Equal(m.Hash, hash[:]) {
+		return m
+	}
+
+	node := m.Left.FindNode(hash)
+	if node == nil {
+		node = m.Right.FindNode(hash)
+	}
+	return node
 }

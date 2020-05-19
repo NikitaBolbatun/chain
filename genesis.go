@@ -36,7 +36,7 @@ func (g Genesis) ToBlock() Block {
 		return transaction[i].To < transaction[j].To
 	})
 	block := Block{
-		BlockNum:      0,
+		BlockNum:      1,
 		Timestamp:     0,
 		Transactions:  transaction,
 		BlockHash:     "",

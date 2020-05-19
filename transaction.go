@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"golang.org/x/crypto/ed25519"
+	"reflect"
 )
 
 type Transaction struct {
@@ -15,7 +16,6 @@ type Transaction struct {
 	Amount uint64
 	Fee    uint64
 	PubKey ed25519.PublicKey
-
 	Signature []byte `json:"-"`
 }
 
@@ -47,7 +47,7 @@ func NewTransaction(from, to string, amount, fee uint64, key ed25519.PublicKey, 
 		Signature: signature,
 	}
 }
-//Исправить костыль с 2 функцией addtransaction
+
 func (c *Node) AddTransaction(transaction Transaction) error {
 	c.transMutex.Lock()
 	defer c.transMutex.Unlock()
@@ -56,7 +56,9 @@ func (c *Node) AddTransaction(transaction Transaction) error {
 	if err != nil {
 		return err
 	}
-
+	if reflect.DeepEqual(c.transactionPool[hash], hash) {
+		return nil
+	}
 	err = c.CheckTransaction(transaction)
 	if err != nil {
 		return err

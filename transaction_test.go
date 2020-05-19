@@ -61,7 +61,7 @@ func Test_SingTransaction(t *testing.T) {
 		Fee:    10,
 		PubKey: keys[0].Public().(ed25519.PublicKey),
 	}
-	//Проверка что до подписи она была пустая
+
 	var a[]byte
 	if !reflect.DeepEqual(tr.Signature,a){
 		t.Fatal()
