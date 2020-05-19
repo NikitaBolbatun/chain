@@ -2,8 +2,12 @@ package bulba_chain
 
 import (
 	"bytes"
+	"context"
 	"encoding/gob"
+	"errors"
+	"fmt"
 	"golang.org/x/crypto/ed25519"
+	"reflect"
 )
 
 type Transaction struct {
@@ -12,7 +16,6 @@ type Transaction struct {
 	Amount uint64
 	Fee    uint64
 	PubKey ed25519.PublicKey
-
 	Signature []byte `json:"-"`
 }
 
@@ -46,20 +49,55 @@ func NewTransaction(from, to string, amount, fee uint64, key ed25519.PublicKey, 
 }
 
 func (c *Node) AddTransaction(transaction Transaction) error {
+	c.transMutex.Lock()
+	defer c.transMutex.Unlock()
+
 	hash, err := transaction.Hash()
 	if err != nil {
 		return err
 	}
+	if reflect.DeepEqual(c.transactionPool[hash], hash) {
+		return nil
+	}
+	err = c.CheckTransaction(transaction)
+	if err != nil {
+		return err
+	}
+
 	c.transactionPool[hash] = transaction
+
+	ctx := context.Background()
+
+	fmt.Println("Add transaction transaction pool")
+
+	c.Broadcast(ctx, Message{
+		From: c.address,
+		Data: TransactionSend{
+			NodeName:    c.address,
+			Transaction: transaction,
+		},
+	})
 	return nil
 }
 
-func (c *Node) SignTransaction(transaction Transaction) (Transaction, error) {
+func (c *Node) SignTransaction(transaction Transaction)  (Transaction,error) {
 	b, err := transaction.Bytes()
 	if err != nil {
-		return Transaction{}, err
+		return  transaction,err
 	}
 
 	transaction.Signature = ed25519.Sign(c.key, b)
-	return transaction, nil
+
+	return  transaction,nil
+}
+
+func (c *Node) CheckTransaction(transaction Transaction) error {
+	if transaction.To == "" || transaction.From == "" {
+		return errors.New("username not correct")
+	}
+	balance:= c.state[transaction.From]
+	if balance < transaction.Fee + transaction.Amount {
+		return  errors.New("balance not correct" )
+	}
+	return nil
 }

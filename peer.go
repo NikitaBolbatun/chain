@@ -19,19 +19,21 @@ func (c *Node) AddPeer(peer Blockchain) error {
 	}
 
 	out := make(chan Message, MSGBusLen)
-	in := peer.Connection(c.address, out)
+	in := peer.Connection(c.address, out,nil)
 	c.Connection(remoteAddress, in, out)
 	return nil
 }
-
-
 
 func (c *Node) RemovePeer(peer Blockchain) error {
 	delete(c.peers, peer.NodeAddress())
 	return nil
 }
 
-
 func (c *Node) GetBalance(account string) (uint64, error) {
-	panic("implement me")
+	balance, err := c.state[account]
+	if !err {
+		return 0, errors.New("unknown user")
+	}
+
+	return balance, nil
 }

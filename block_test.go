@@ -25,7 +25,7 @@ func TestBlockProcessing(t *testing.T) {
 		validatorAddr: 50,
 	}
 
-	err = nd.AddBlock(Block{
+	err = nd.Insertblock(Block{
 		BlockNum: 1,
 		Transactions: []Transaction{
 			{
@@ -45,9 +45,7 @@ func TestBlockProcessing(t *testing.T) {
 	if nd.state["two"] != 150 {
 		t.Error()
 	}
-	if nd.state[validatorAddr] != 60 {
-		t.Error()
-	}
+
 }
 func TestNode_GetValidator(t *testing.T) {
 	pubkey, _, err := ed25519.GenerateKey(nil)

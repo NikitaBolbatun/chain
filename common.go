@@ -17,6 +17,7 @@ func PubKeyToAddress(key crypto.PublicKey) (string, error) {
 	return "", errors.New("incorrect key")
 }
 
+
 func Hash(b []byte) (string, error) {
 	hash := sha256.Sum256(b)
 	return hex.EncodeToString(hash[:]), nil
